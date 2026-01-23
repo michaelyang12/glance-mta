@@ -1,0 +1,81 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  /* Teenage Engineering palette */
+  --te-black: #0a0a0a;
+  --te-dark: #141414;
+  --te-gray: #1a1a1a;
+  --te-border: #2a2a2a;
+  --te-text: #e5e5e5;
+  --te-text-dim: #666666;
+  --te-orange: #ff6b00;
+  --te-orange-dim: #cc5500;
+  --te-green: #00ff88;
+  --te-red: #ff3b3b;
+
+  /* Typography */
+  --font-mono: 'JetBrains Mono', 'Space Mono', monospace;
+
+  /* Spacing */
+  --grid: 8px;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  font-family: var(--font-mono);
+  background: var(--te-black);
+  color: var(--te-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scanline effect overlay */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.1) 2px,
+    rgba(0, 0, 0, 0.1) 4px
+  );
+  pointer-events: none;
+  z-index: 1000;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--te-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--te-border);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--te-orange);
+}
+
+/* Selection */
+::selection {
+  background: var(--te-orange);
+  color: var(--te-black);
+}

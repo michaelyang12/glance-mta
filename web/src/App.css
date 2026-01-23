@@ -1,0 +1,1158 @@
+/* ========================================
+   TEENAGE ENGINEERING TRANSIT DISPLAY
+   ======================================== */
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--te-black);
+  padding: calc(var(--grid) * 3);
+}
+
+/* ========================================
+   HEADER
+   ======================================== */
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: calc(var(--grid) * 2) calc(var(--grid) * 3);
+  background: var(--te-dark);
+  border: 1px solid var(--te-border);
+  border-radius: 4px;
+  margin-bottom: calc(var(--grid) * 3);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--grid) * 2);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--grid);
+}
+
+.logo-icon {
+  color: var(--te-orange);
+  font-size: 12px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.logo-text {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--te-text);
+}
+
+.header-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--te-border);
+}
+
+.header-subtitle {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--te-text-dim);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--grid) * 2);
+}
+
+.last-update {
+  font-size: 11px;
+  color: var(--te-text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ========================================
+   VIEW TOGGLE
+   ======================================== */
+
+.view-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--te-gray);
+  border: 1px solid var(--te-border);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.view-toggle:hover {
+  border-color: var(--te-orange);
+}
+
+.view-option {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--te-text-dim);
+  transition: color 0.2s ease;
+}
+
+.view-option.active {
+  color: var(--te-orange);
+}
+
+.view-separator {
+  font-size: 9px;
+  color: var(--te-border);
+}
+
+/* ========================================
+   STATUS INDICATOR
+   ======================================== */
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--te-gray);
+  border: 1px solid var(--te-border);
+  border-radius: 2px;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.status-live .status-dot {
+  background: var(--te-green);
+  box-shadow: 0 0 8px var(--te-green);
+}
+
+.status-stale .status-dot {
+  background: var(--te-orange);
+  box-shadow: 0 0 8px var(--te-orange);
+}
+
+.status-error .status-dot {
+  background: var(--te-red);
+  box-shadow: 0 0 8px var(--te-red);
+}
+
+.status-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.status-live .status-label { color: var(--te-green); }
+.status-stale .status-label { color: var(--te-orange); }
+.status-error .status-label { color: var(--te-red); }
+
+/* ========================================
+   MAIN CONTENT
+   ======================================== */
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.loading,
+.error-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--grid) * 2);
+  color: var(--te-text-dim);
+  font-size: 12px;
+  letter-spacing: 2px;
+}
+
+.loading-bar {
+  width: 120px;
+  height: 2px;
+  background: var(--te-border);
+  border-radius: 1px;
+  overflow: hidden;
+  position: relative;
+}
+
+.loading-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -40px;
+  width: 40px;
+  height: 100%;
+  background: var(--te-orange);
+  animation: loading 1s ease-in-out infinite;
+}
+
+@keyframes loading {
+  0% { left: -40px; }
+  100% { left: 120px; }
+}
+
+.error-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--te-red);
+  color: var(--te-black);
+  font-weight: 700;
+  border-radius: 2px;
+}
+
+.error-detail {
+  font-size: 10px;
+  color: var(--te-red);
+}
+
+/* ========================================
+   LINES GRID
+   ======================================== */
+
+.lines-grid,
+.stations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: calc(var(--grid) * 3);
+  align-items: start;
+}
+
+/* ========================================
+   LINE CARD
+   ======================================== */
+
+.line-card {
+  background: var(--te-dark);
+  border: 1px solid var(--te-border);
+  border-radius: 4px;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.line-card:hover {
+  border-color: var(--te-orange);
+}
+
+.line-header {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--grid) * 2);
+  padding: calc(var(--grid) * 2) calc(var(--grid) * 3);
+  background: var(--te-gray);
+  border-bottom: 1px solid var(--te-border);
+}
+
+.line-name {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  color: var(--te-text);
+  flex: 1;
+}
+
+/* Drag handle */
+.drag-handle {
+  color: var(--te-text-dim);
+  font-size: 12px;
+  cursor: grab;
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+  user-select: none;
+  letter-spacing: -2px;
+}
+
+.line-card:hover .drag-handle,
+.station-card:hover .drag-handle {
+  opacity: 1;
+}
+
+/* Dragging state */
+.line-card.dragging,
+.station-card.dragging {
+  opacity: 0.5;
+  border-color: var(--te-orange);
+}
+
+/* ========================================
+   STATION CARD (Station Mode)
+   ======================================== */
+
+.station-card {
+  background: var(--te-dark);
+  border: 1px solid var(--te-border);
+  border-radius: 4px;
+  overflow: hidden;
+  transition: border-color 0.2s ease, opacity 0.2s ease;
+}
+
+.station-card:hover {
+  border-color: var(--te-orange);
+}
+
+.station-header {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--grid) * 2);
+  padding: calc(var(--grid) * 2) calc(var(--grid) * 3);
+  background: var(--te-gray);
+  border-bottom: 1px solid var(--te-border);
+}
+
+.line-badges {
+  display: flex;
+  gap: 4px;
+}
+
+.line-badge-small {
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+}
+
+/* Station card states */
+.station-card.stale {
+  border-color: var(--te-orange);
+  animation: warning-pulse 2s ease-in-out infinite;
+}
+
+.station-card.offline {
+  border-color: var(--te-red);
+  animation: warning-pulse 1.5s ease-in-out infinite;
+}
+
+/* Line sections within station card */
+.line-sections {
+  display: flex;
+  flex-direction: column;
+}
+
+.line-section {
+  border-bottom: 1px solid var(--te-border);
+}
+
+.line-section:last-child {
+  border-bottom: none;
+}
+
+.line-section-header {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--grid) * 2);
+  padding: calc(var(--grid) * 1.5) calc(var(--grid) * 3);
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--te-border);
+}
+
+.line-section .directions {
+  padding-left: calc(var(--grid) * 2);
+}
+
+/* ========================================
+   STATIONS LIST (within line card)
+   ======================================== */
+
+.stations-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.station-section {
+  border-bottom: 1px solid var(--te-border);
+}
+
+.station-section:last-child {
+  border-bottom: none;
+}
+
+.station-section-header {
+  padding: calc(var(--grid) * 1.5) calc(var(--grid) * 3);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.station-section-name {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--te-text-dim);
+}
+
+.line-badge {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 50%;
+  color: var(--te-black);
+}
+
+/* NYC Subway line colors */
+.line-L { background: #a7a9ac; }
+.line-G { background: #6cbe45; }
+.line-A, .line-C, .line-E { background: #2850ad; color: white; }
+.line-B, .line-D, .line-F, .line-M { background: #ff6319; }
+.line-J, .line-Z { background: #996633; }
+.line-N, .line-Q, .line-R, .line-W { background: #fccc0a; }
+.line-1, .line-2, .line-3 { background: #ee352e; color: white; }
+.line-4, .line-5, .line-6 { background: #00933c; color: white; }
+.line-7 { background: #b933ad; color: white; }
+.line-S { background: #808183; }
+
+.station-name {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  color: var(--te-text);
+  flex: 1;
+}
+
+.pin-button {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--te-text-dim);
+  padding: 4px 8px;
+  transition: color 0.2s ease;
+}
+
+.pin-button:hover {
+  color: var(--te-orange);
+}
+
+.pin-button.pinned {
+  color: var(--te-orange);
+}
+
+
+/* ========================================
+   DIRECTIONS
+   ======================================== */
+
+.directions {
+  display: flex;
+  flex-direction: column;
+}
+
+.direction-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: calc(var(--grid) * 2) calc(var(--grid) * 3);
+  border-bottom: 1px solid var(--te-border);
+}
+
+.direction-row:last-child {
+  border-bottom: none;
+}
+
+.direction-label {
+  display: flex;
+  align-items: center;
+  gap: var(--grid);
+}
+
+.direction-arrow {
+  color: var(--te-orange);
+  font-size: 12px;
+}
+
+.direction-name {
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--te-text-dim);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.direction-label {
+  position: relative;
+}
+
+.direction-label:hover .direction-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+.direction-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 4px;
+  padding: 4px 8px;
+  background: var(--te-text);
+  color: var(--te-black);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  border-radius: 2px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* ========================================
+   ARRIVAL TIMES
+   ======================================== */
+
+.arrivals-list {
+  display: flex;
+  gap: calc(var(--grid) * 2);
+  overflow-x: auto;
+  flex-shrink: 1;
+  min-width: 0;
+  padding: 2px 0;
+  margin: -2px 0;
+}
+
+.arrivals-list::-webkit-scrollbar {
+  height: 4px;
+}
+
+.arrivals-list::-webkit-scrollbar-track {
+  background: var(--te-dark);
+  border-radius: 2px;
+}
+
+.arrivals-list::-webkit-scrollbar-thumb {
+  background: var(--te-border);
+  border-radius: 2px;
+}
+
+.arrivals-list::-webkit-scrollbar-thumb:hover {
+  background: var(--te-text-dim);
+}
+
+.arrival-time {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 6px;
+  background: var(--te-gray);
+  border: 1px solid var(--te-border);
+  border-radius: 2px;
+  min-width: 52px;
+  flex-shrink: 0;
+}
+
+.arrival-minutes {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--te-text);
+  text-align: center;
+}
+
+.arrival-unit {
+  font-size: 8px;
+  font-weight: 500;
+  color: var(--te-text-dim);
+  letter-spacing: 0.5px;
+}
+
+/* Arrival time with line badge (Station mode) */
+.arrival-time.with-badge {
+  width: auto;
+  min-width: 72px;
+  padding: 4px 6px;
+  gap: 4px;
+}
+
+.arrival-line-badge {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 50%;
+  color: var(--te-black);
+  flex-shrink: 0;
+}
+
+.arrival-time.arriving .arrival-line-badge {
+  background: var(--te-black);
+  color: var(--te-orange);
+}
+
+.arrival-time.departed .arrival-line-badge {
+  background: var(--te-dark);
+  color: var(--te-text-dim);
+}
+
+/* Arriving state */
+.arrival-time.arriving {
+  background: var(--te-orange);
+  border-color: var(--te-orange);
+  animation: arriving-pulse 0.5s ease-in-out infinite alternate;
+}
+
+.arrival-time.arriving .arrival-minutes {
+  color: var(--te-black);
+}
+
+@keyframes arriving-pulse {
+  from { opacity: 1; }
+  to { opacity: 0.8; }
+}
+
+/* Departed state */
+.arrival-time.departed {
+  background: var(--te-gray);
+  border-color: var(--te-text-dim);
+  animation: departed-fade 5s ease-out forwards;
+}
+
+.arrival-time.departed .arrival-minutes {
+  color: var(--te-text-dim);
+}
+
+@keyframes departed-fade {
+  0% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0.3; }
+}
+
+/* Soon state */
+.arrival-time.soon:not(.arriving):not(.stale):not(.offline) {
+  border-color: var(--te-orange);
+}
+
+.arrival-time.soon:not(.arriving):not(.stale):not(.offline) .arrival-minutes {
+  color: var(--te-orange);
+}
+
+/* ========================================
+   STALE & OFFLINE STATES
+   ======================================== */
+
+@keyframes warning-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Status badge (in station header) */
+.status-badge {
+  margin-left: auto;
+  padding: 3px 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  border-radius: 2px;
+  animation: warning-pulse 1s ease-in-out infinite;
+}
+
+.status-badge.stale {
+  background: var(--te-orange);
+  color: var(--te-black);
+}
+
+.status-badge.offline {
+  background: var(--te-red);
+  color: white;
+}
+
+/* Line card states */
+.line-card.stale {
+  border-color: var(--te-orange);
+  animation: warning-pulse 2s ease-in-out infinite;
+}
+
+.line-card.offline {
+  border-color: var(--te-red);
+  animation: warning-pulse 1.5s ease-in-out infinite;
+}
+
+/* Arrival time - stale (orange) */
+.arrival-time.stale {
+  border-color: var(--te-orange);
+  background: rgba(255, 107, 0, 0.1);
+  position: relative;
+}
+
+.arrival-time.stale .arrival-minutes {
+  color: var(--te-orange);
+  opacity: 0.8;
+}
+
+.arrival-time.stale .arrival-unit {
+  color: var(--te-orange);
+  opacity: 0.6;
+}
+
+/* Arrival time - offline (red) */
+.arrival-time.offline {
+  border-color: var(--te-red);
+  background: rgba(255, 59, 59, 0.1);
+  position: relative;
+}
+
+.arrival-time.offline .arrival-minutes {
+  color: var(--te-red);
+  opacity: 0.8;
+}
+
+.arrival-time.offline .arrival-unit {
+  color: var(--te-red);
+  opacity: 0.6;
+}
+
+/* Corner badge on arrival times */
+.arrival-indicator {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: warning-pulse 1s ease-in-out infinite;
+}
+
+.arrival-indicator.stale {
+  background: var(--te-orange);
+  color: var(--te-black);
+}
+
+.arrival-indicator.offline {
+  background: var(--te-red);
+  color: white;
+}
+
+/* ========================================
+   FOOTER
+   ======================================== */
+
+.footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: calc(var(--grid) * 2);
+  padding: calc(var(--grid) * 2);
+  margin-top: calc(var(--grid) * 3);
+}
+
+.footer-text {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--te-text-dim);
+}
+
+.footer-divider {
+  color: var(--te-border);
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+@media (max-width: 480px) {
+  .app {
+    padding: calc(var(--grid) * 2);
+  }
+
+  .header {
+    flex-direction: column;
+    gap: calc(var(--grid) * 2);
+    align-items: flex-start;
+  }
+
+  .header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .lines-grid,
+  .stations-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .station-header {
+    padding: calc(var(--grid) * 1.5) calc(var(--grid) * 2);
+  }
+
+  .line-header {
+    padding: calc(var(--grid) * 1.5) calc(var(--grid) * 2);
+  }
+
+  .station-section-header {
+    padding: calc(var(--grid) * 1) calc(var(--grid) * 2);
+  }
+
+  .direction-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--grid);
+  }
+
+  .arrivals-list {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+/* ========================================
+   DASHBOARD LINK (in header)
+   ======================================== */
+
+.dashboard-link {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--te-text-dim);
+  text-decoration: none;
+  padding: 4px 10px;
+  background: var(--te-gray);
+  border: 1px solid var(--te-border);
+  border-radius: 2px;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.dashboard-link:hover {
+  border-color: var(--te-orange);
+  color: var(--te-orange);
+}
+
+/* ========================================
+   DASHBOARD (GLANCE VIEW)
+   ======================================== */
+
+.dashboard {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: var(--te-black);
+  padding: clamp(16px, 4vw, 48px);
+}
+
+.dashboard-loading,
+.dashboard-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.dashboard-loading-dot {
+  width: 12px;
+  height: 12px;
+  background: var(--te-orange);
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.dashboard-error-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--te-red);
+  color: var(--te-black);
+  font-size: 24px;
+  font-weight: 700;
+  border-radius: 4px;
+}
+
+.dashboard-grid {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(20px, 3vw, 36px);
+  width: 100%;
+  max-width: 800px;
+}
+
+/* ========================================
+   DASHBOARD STATION
+   ======================================== */
+
+.dashboard-station {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--te-border);
+  background: var(--te-dark);
+}
+
+.dashboard-station-name {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 1vw, 12px);
+  font-size: clamp(12px, 1.6vw, 16px);
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--te-text);
+  padding: clamp(10px, 1.5vw, 16px) clamp(16px, 2.5vw, 28px);
+  background: var(--te-gray);
+  border-bottom: 1px solid var(--te-border);
+}
+
+.dashboard-station-icon {
+  color: var(--te-orange);
+  font-size: clamp(8px, 1vw, 12px);
+}
+
+/* Pin indicator */
+.dashboard-pin-indicator {
+  position: absolute;
+  left: clamp(8px, 1vw, 12px);
+  color: var(--te-orange);
+  font-size: clamp(10px, 1.2vw, 14px);
+  opacity: 0.6;
+}
+
+
+/* Station menu */
+.dashboard-station-menu-wrapper {
+  position: absolute;
+  right: clamp(8px, 1vw, 12px);
+}
+
+.dashboard-station-menu-btn {
+  background: none;
+  border: none;
+  color: var(--te-text-dim);
+  font-size: clamp(14px, 1.6vw, 18px);
+  cursor: pointer;
+  padding: 4px 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease, color 0.2s ease;
+  line-height: 1;
+}
+
+.dashboard-station:hover .dashboard-station-menu-btn,
+.dashboard-station-menu-btn:focus {
+  opacity: 0.5;
+}
+
+.dashboard-station-menu-btn:hover {
+  opacity: 1;
+  color: var(--te-orange);
+}
+
+.dashboard-station-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: var(--te-gray);
+  border: 1px solid var(--te-border);
+  border-radius: 2px;
+  z-index: 100;
+  min-width: 100px;
+}
+
+.dashboard-station-menu-item {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  color: var(--te-text);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.dashboard-station-menu-item:hover {
+  background: var(--te-dark);
+  color: var(--te-orange);
+}
+
+.dashboard-rows {
+  display: grid;
+  grid-template-columns: auto auto auto auto;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(10px, 1.5vw, 18px) clamp(20px, 3vw, 40px);
+  padding: clamp(14px, 2vw, 24px) clamp(20px, 3vw, 36px);
+}
+
+.dashboard-row {
+  display: contents;
+}
+
+.dashboard-row-divider {
+  grid-column: 1 / -1;
+  height: 1px;
+  background: var(--te-border);
+  margin: clamp(4px, 0.5vw, 8px) 0;
+}
+
+.dashboard-direction-name {
+  font-size: clamp(12px, 1.6vw, 18px);
+  font-weight: 500;
+  letter-spacing: 1px;
+  color: var(--te-text-dim);
+  max-width: clamp(120px, 18vw, 200px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ========================================
+   DASHBOARD LINE BADGE
+   ======================================== */
+
+.dashboard-line-badge {
+  width: clamp(26px, 3.5vw, 40px);
+  height: clamp(26px, 3.5vw, 40px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(14px, 1.8vw, 20px);
+  font-weight: 700;
+  border-radius: 50%;
+  color: var(--te-black);
+  flex-shrink: 0;
+}
+
+/* ========================================
+   DASHBOARD TIME (GIANT NUMBERS)
+   ======================================== */
+
+.dashboard-time {
+  font-size: clamp(28px, 4.5vw, 52px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--te-text);
+  line-height: 1;
+}
+
+.dashboard-time.arriving {
+  color: var(--te-orange);
+  animation: arriving-pulse 0.5s ease-in-out infinite alternate;
+}
+
+.dashboard-time.soon:not(.arriving) {
+  color: var(--te-orange);
+}
+
+.dashboard-time.none {
+  color: var(--te-text-dim);
+  opacity: 0.5;
+}
+
+.dashboard-time.stale {
+  opacity: 0.6;
+}
+
+.dashboard-time.offline {
+  opacity: 0.6;
+}
+
+.dashboard-time.departed {
+  color: var(--te-text-dim);
+  animation: departed-fade 10s ease-out forwards;
+}
+
+.dashboard-stale-icon {
+  font-size: clamp(14px, 2vw, 24px);
+  color: var(--te-orange);
+  margin-left: clamp(4px, 0.5vw, 8px);
+  vertical-align: super;
+}
+
+/* ========================================
+   DASHBOARD FOOTER
+   ======================================== */
+
+.dashboard-footer {
+  position: fixed;
+  bottom: clamp(12px, 2vw, 24px);
+  right: clamp(12px, 2vw, 24px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  animation: blink 1s ease-in-out infinite;
+}
+
+.dashboard-status-dot.live {
+  background: var(--te-green);
+  box-shadow: 0 0 8px var(--te-green);
+}
+
+.dashboard-status-dot.stale {
+  background: var(--te-orange);
+  box-shadow: 0 0 8px var(--te-orange);
+}
+
+.dashboard-status-dot.error {
+  background: var(--te-red);
+  box-shadow: 0 0 8px var(--te-red);
+}
+
+.dashboard-back-link {
+  font-size: 18px;
+  color: var(--te-text-dim);
+  text-decoration: none;
+  padding: 4px 8px;
+  opacity: 0.5;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.dashboard-back-link:hover {
+  opacity: 1;
+  color: var(--te-orange);
+}
+
+/* ========================================
+   DASHBOARD RESPONSIVE
+   ======================================== */
+
+@media (max-width: 480px) {
+  .dashboard-time {
+    font-size: clamp(36px, 12vw, 56px);
+  }
+}
