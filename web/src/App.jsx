@@ -1197,8 +1197,8 @@ function DirectionRow({
   }
 
   const displayArrivals = departedInfo
-    ? sortedArrivals.slice(0, Math.max(0, sortedArrivals.length - 1))
-    : sortedArrivals;
+    ? sortedArrivals.slice(0, 2)
+    : sortedArrivals.slice(0, 3);
 
   return (
     <div className="direction-row">
