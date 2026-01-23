@@ -62,11 +62,32 @@ func (c *ArrivalCache) GetForStops(stopIDs map[string]bool) []Arrival {
             result = append(result, list...)
         }
     }
-    
-    // Sort overall result? Might be nice.
+
     sort.Slice(result, func(i, j int) bool {
         return result[i].Minutes < result[j].Minutes
     })
-    
+
     return result
+}
+
+func (c *ArrivalCache) GetAll() []Arrival {
+    c.mu.RLock()
+    defer c.mu.RUnlock()
+
+    var result []Arrival
+    for _, list := range c.arrivals {
+        result = append(result, list...)
+    }
+
+    sort.Slice(result, func(i, j int) bool {
+        return result[i].Minutes < result[j].Minutes
+    })
+
+    return result
+}
+
+func (c *ArrivalCache) IsStale() bool {
+    c.mu.RLock()
+    defer c.mu.RUnlock()
+    return time.Since(c.updatedAt) > 60*time.Second
 }

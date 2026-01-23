@@ -37,7 +37,7 @@ func main() {
 	go hub.Run()
 	go fetcher.Start(ctx)
 
-	server := api.NewServer(cfg.Server.Port, hub, stationDB)
+	server := api.NewServer(cfg.Server.Port, hub, stationDB, cache)
 
 	go func() {
 		fmt.Printf("Server listening on port %d\n", cfg.Server.Port)

@@ -86,6 +86,31 @@ func (db *StationDB) GetStation(stopID string) (StationInfo, bool) {
     return s, ok
 }
 
+func (db *StationDB) Search(query string) []StationInfo {
+    query = strings.ToLower(query)
+    var results []StationInfo
+    seen := make(map[string]bool)
+
+    for _, s := range db.allStations {
+        if seen[s.StopID] {
+            continue
+        }
+        nameMatch := strings.Contains(strings.ToLower(s.Name), query)
+        lineMatch := false
+        for _, l := range s.Lines {
+            if strings.ToLower(l) == query {
+                lineMatch = true
+                break
+            }
+        }
+        if nameMatch || lineMatch {
+            results = append(results, s)
+            seen[s.StopID] = true
+        }
+    }
+    return results
+}
+
 func (db *StationDB) GetFeedsForStops(stopIDs []string) []string {
     feedsSet := make(map[string]bool)
     for _, stopID := range stopIDs {

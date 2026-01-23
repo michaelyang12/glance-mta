@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import "./App.css";
 
 const API_URL = "/arrivals";
+const STATIONS_SEARCH_URL = "/stations/search";
 const REFRESH_INTERVAL = 15000;
 const DEPARTED_DISPLAY_MS = 10000;
 
@@ -9,6 +10,7 @@ const VIEW_MODE_KEY = "mta-view-mode";
 const LINE_ORDER_KEY = "mta-line-order";
 const STATION_ORDER_KEY = "mta-station-order";
 const GLANCE_PINNED_KEY = "mta-glance-pinned";
+const USER_STATIONS_KEY = "mta-user-stations";
 
 // Generate a key for tracking a train (without minutes, to track across updates)
 function trainKey(arr) {
@@ -26,9 +28,40 @@ function useHashRoute() {
   return route;
 }
 
+// User stations: [{stop_id, name, lines}]
+function useUserStations() {
+  const [stations, setStations] = useState(() => {
+    const stored = localStorage.getItem(USER_STATIONS_KEY);
+    return stored ? JSON.parse(stored) : [];
+  });
+
+  const addStation = (station) => {
+    setStations((prev) => {
+      if (prev.some((s) => s.stop_id === station.stop_id)) return prev;
+      const next = [...prev, station];
+      localStorage.setItem(USER_STATIONS_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const removeStation = (stopId) => {
+    setStations((prev) => {
+      const next = prev.filter((s) => s.stop_id !== stopId);
+      localStorage.setItem(USER_STATIONS_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  return { stations, addStation, removeStation };
+}
+
 function App() {
   const route = useHashRoute();
   const isDashboard = route === "#/glance";
+  const isSearch = route === "#/search";
+
+  const { stations: userStations, addStation, removeStation } =
+    useUserStations();
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -59,9 +92,15 @@ function App() {
     localStorage.setItem(VIEW_MODE_KEY, newMode);
   };
 
-  const fetchArrivals = async () => {
+  // Build the stops query param from user stations
+  const stopsParam = userStations.map((s) => s.stop_id).join(",");
+
+  const fetchArrivals = useCallback(async () => {
     try {
-      const res = await fetch(API_URL);
+      const url = stopsParam
+        ? `${API_URL}?stops=${encodeURIComponent(stopsParam)}`
+        : API_URL;
+      const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
 
@@ -107,13 +146,13 @@ function App() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [stopsParam]);
 
   useEffect(() => {
     fetchArrivals();
     const interval = setInterval(fetchArrivals, REFRESH_INTERVAL);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchArrivals]);
 
   // Group arrivals by line
   const groupedByLine =
@@ -189,6 +228,11 @@ function App() {
 
   const isStale = data?.stale || !!error;
 
+  // Render Search view
+  if (isSearch) {
+    return <SearchView userStations={userStations} addStation={addStation} />;
+  }
+
   // Render Dashboard view
   if (isDashboard) {
     return (
@@ -198,6 +242,7 @@ function App() {
         error={error}
         isStale={isStale}
         departedTrains={departedTrains}
+        userStations={userStations}
       />
     );
   }
@@ -208,13 +253,16 @@ function App() {
       <header className="header">
         <div className="header-left">
           <div className="logo">
-            <span className="logo-icon">◼</span>
+            <span className="logo-icon">{"\u25FC"}</span>
             <span className="logo-text">MTA</span>
           </div>
           <div className="header-divider" />
           <span className="header-subtitle">REAL-TIME ARRIVALS</span>
         </div>
         <div className="header-right">
+          <a href="#/search" className="dashboard-link" title="Search stations">
+            SEARCH
+          </a>
           <a href="#/glance" className="dashboard-link" title="Glance view">
             GLANCE
           </a>
@@ -261,6 +309,18 @@ function App() {
             <span>CONNECTION ERROR</span>
             <span className="error-detail">{error}</span>
           </div>
+        ) : userStations.length === 0 ? (
+          <div className="empty-state">
+            <span className="empty-state-icon">{"\u25FC"}</span>
+            <span className="empty-state-title">NO STATIONS ADDED</span>
+            <span className="empty-state-subtitle">
+              Use{" "}
+              <a href="#/search" className="empty-state-link">
+                SEARCH
+              </a>{" "}
+              to find and add stations
+            </span>
+          </div>
         ) : viewMode === "line" ? (
           <div className="lines-grid">
             {sortedLines.map(([line, arrivals]) => (
@@ -294,6 +354,8 @@ function App() {
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, station)}
                 onDragEnd={handleDragEnd}
+                userStations={userStations}
+                onRemoveStation={removeStation}
               />
             ))}
           </div>
@@ -302,8 +364,8 @@ function App() {
 
       <footer className="footer">
         <span className="footer-text">WILLIAMSBURG TRANSIT DISPLAY</span>
-        <span className="footer-divider">•</span>
-        <span className="footer-text">v1.0</span>
+        <span className="footer-divider">{"\u2022"}</span>
+        <span className="footer-text">v2.0</span>
       </footer>
     </div>
   );
@@ -326,10 +388,285 @@ function StatusIndicator({ stale, error, loading }) {
 }
 
 /* ========================================
+   SEARCH VIEW
+   ======================================== */
+
+function SearchView({ userStations, addStation }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedStation, setSelectedStation] = useState(null);
+  const [arrivals, setArrivals] = useState(null);
+  const [arrivalsLoading, setArrivalsLoading] = useState(false);
+  const debounceRef = useRef(null);
+
+  // Search stations
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      return;
+    }
+
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(
+          `${STATIONS_SEARCH_URL}?q=${encodeURIComponent(query.trim())}`,
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setResults(data || []);
+        }
+      } catch (e) {
+        // ignore
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(debounceRef.current);
+  }, [query]);
+
+  // Fetch arrivals for selected station (live updates)
+  useEffect(() => {
+    if (!selectedStation) {
+      setArrivals(null);
+      return;
+    }
+
+    const fetchStationArrivals = async () => {
+      setArrivalsLoading(true);
+      try {
+        const res = await fetch(
+          `${API_URL}?stops=${encodeURIComponent(selectedStation.stop_id)}`,
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setArrivals(data);
+        }
+      } catch (e) {
+        // ignore
+      } finally {
+        setArrivalsLoading(false);
+      }
+    };
+
+    fetchStationArrivals();
+    const interval = setInterval(fetchStationArrivals, REFRESH_INTERVAL);
+    return () => clearInterval(interval);
+  }, [selectedStation]);
+
+  const isAdded = selectedStation
+    ? userStations.some((s) => s.stop_id === selectedStation.stop_id)
+    : false;
+
+  return (
+    <div className="app">
+      <header className="header">
+        <div className="header-left">
+          <a href="#/" className="back-link" title="Back">
+            {"\u2190"}
+          </a>
+          <div className="header-divider" />
+          <span className="header-subtitle">SEARCH STATIONS</span>
+        </div>
+        <div className="header-right">
+          <a href="#/" className="dashboard-link">
+            ARRIVALS
+          </a>
+          <a href="#/glance" className="dashboard-link">
+            GLANCE
+          </a>
+        </div>
+      </header>
+
+      <main className="main search-main">
+        <div className="search-input-wrapper">
+          <input
+            type="text"
+            className="search-input"
+            placeholder="STATION NAME OR LINE..."
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setSelectedStation(null);
+            }}
+            autoFocus
+          />
+          {query && (
+            <button
+              className="search-clear"
+              onClick={() => {
+                setQuery("");
+                setSelectedStation(null);
+                setResults([]);
+              }}
+            >
+              {"\u2715"}
+            </button>
+          )}
+        </div>
+
+        {selectedStation ? (
+          <div className="search-detail">
+            <div className="search-detail-header">
+              <button
+                className="search-detail-back"
+                onClick={() => setSelectedStation(null)}
+              >
+                {"\u2190"} RESULTS
+              </button>
+              <div className="search-detail-station">
+                <span className="search-detail-name">
+                  {selectedStation.name.toUpperCase()}
+                </span>
+                <div className="search-detail-lines">
+                  {selectedStation.lines.map((l) => (
+                    <span key={l} className={`line-badge line-badge-small line-${l}`}>
+                      {l}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <button
+                className={`search-add-btn ${isAdded ? "added" : ""}`}
+                onClick={() => {
+                  if (!isAdded) {
+                    addStation({
+                      stop_id: selectedStation.stop_id,
+                      name: selectedStation.name,
+                      lines: selectedStation.lines,
+                    });
+                  }
+                }}
+                disabled={isAdded}
+              >
+                {isAdded ? "ADDED" : "+ ADD STATION"}
+              </button>
+            </div>
+
+            {arrivalsLoading && !arrivals ? (
+              <div className="loading">
+                <div className="loading-bar" />
+                <span>LOADING...</span>
+              </div>
+            ) : arrivals?.arrivals?.length > 0 ? (
+              <div className="search-arrivals">
+                <SearchArrivalsDisplay arrivals={arrivals.arrivals} />
+              </div>
+            ) : (
+              <div className="search-no-arrivals">
+                <span>NO UPCOMING ARRIVALS</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="search-results">
+            {searching && (
+              <div className="search-loading">
+                <div className="loading-bar" />
+              </div>
+            )}
+            {!searching && query && results.length === 0 && (
+              <div className="search-empty">NO STATIONS FOUND</div>
+            )}
+            {results.map((station) => {
+              const alreadyAdded = userStations.some(
+                (s) => s.stop_id === station.stop_id,
+              );
+              return (
+                <button
+                  key={station.stop_id}
+                  className="search-result-item"
+                  onClick={() => setSelectedStation(station)}
+                >
+                  <div className="search-result-info">
+                    <span className="search-result-name">
+                      {station.name.toUpperCase()}
+                    </span>
+                    <div className="search-result-lines">
+                      {station.lines.map((l) => (
+                        <span
+                          key={l}
+                          className={`line-badge line-badge-small line-${l}`}
+                        >
+                          {l}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  {alreadyAdded && (
+                    <span className="search-result-added">{"\u2713"}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+function SearchArrivalsDisplay({ arrivals }) {
+  // Group by line, then direction
+  const grouped = arrivals.reduce((acc, arr) => {
+    const key = `${arr.line}-${arr.direction}`;
+    if (!acc[key]) {
+      acc[key] = {
+        line: arr.line,
+        direction: arr.direction,
+        direction_code: arr.direction_code,
+        arrivals: [],
+      };
+    }
+    acc[key].arrivals.push(arr);
+    return acc;
+  }, {});
+
+  const rows = Object.values(grouped).sort((a, b) => {
+    const lineCompare = a.line.localeCompare(b.line);
+    if (lineCompare !== 0) return lineCompare;
+    return (a.direction_code || "").localeCompare(b.direction_code || "");
+  });
+
+  return (
+    <div className="search-arrivals-list">
+      {rows.map((row) => (
+        <div key={`${row.line}-${row.direction}`} className="search-arrival-row">
+          <div className="search-arrival-info">
+            <span className={`line-badge line-badge-small line-${row.line}`}>
+              {row.line}
+            </span>
+            <span className="search-arrival-direction">
+              {row.direction.toUpperCase()}
+            </span>
+          </div>
+          <div className="search-arrival-times">
+            {row.arrivals.slice(0, 3).map((arr, i) => (
+              <span
+                key={i}
+                className={`search-arrival-time ${arr.minutes === 0 ? "arriving" : ""} ${arr.minutes <= 3 ? "soon" : ""}`}
+              >
+                {arr.minutes === 0 ? "ARR" : `${arr.minutes}`}
+                {arr.minutes !== 0 && (
+                  <span className="search-arrival-unit">m</span>
+                )}
+              </span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ========================================
    DASHBOARD (GLANCE VIEW)
    ======================================== */
 
-function Dashboard({ data, loading, error, isStale, departedTrains }) {
+function Dashboard({ data, loading, error, isStale, departedTrains, userStations }) {
   const [pinnedStations, setPinnedStations] = useState(() => {
     const stored = localStorage.getItem(GLANCE_PINNED_KEY);
     return stored ? JSON.parse(stored) : [];
@@ -341,7 +678,7 @@ function Dashboard({ data, loading, error, isStale, departedTrains }) {
       if (prev.includes(station)) {
         next = prev.filter((s) => s !== station);
       } else {
-        next = [station, ...prev]; // Most recent at front
+        next = [station, ...prev];
       }
       localStorage.setItem(GLANCE_PINNED_KEY, JSON.stringify(next));
       return next;
@@ -353,7 +690,6 @@ function Dashboard({ data, loading, error, isStale, departedTrains }) {
     data?.arrivals?.reduce((acc, arr) => {
       if (!acc[arr.station]) acc[arr.station] = [];
 
-      // Find existing row for this line+direction
       let row = acc[arr.station].find(
         (r) => r.line === arr.line && r.direction === arr.direction,
       );
@@ -370,13 +706,12 @@ function Dashboard({ data, loading, error, isStale, departedTrains }) {
       return acc;
     }, {}) || {};
 
-  // Sort arrivals within each row, then sort rows by line then direction code
+  // Sort arrivals within each row
   Object.values(groupedByStation).forEach((rows) => {
     rows.forEach((row) => row.arrivals.sort((a, b) => a.minutes - b.minutes));
     rows.sort((a, b) => {
       const lineCompare = a.line.localeCompare(b.line);
       if (lineCompare !== 0) return lineCompare;
-      // N before S
       const dirOrder = { N: 0, S: 1 };
       return (
         (dirOrder[a.directionCode] ?? 2) - (dirOrder[b.directionCode] ?? 2)
@@ -384,17 +719,17 @@ function Dashboard({ data, loading, error, isStale, departedTrains }) {
     });
   });
 
-  // Sort: pinned first (in pin order), then alphabetically
+  // Sort: pinned first, then alphabetically
   const stations = Object.entries(groupedByStation).sort(([a], [b]) => {
     const aPin = pinnedStations.indexOf(a);
     const bPin = pinnedStations.indexOf(b);
     const aIsPinned = aPin !== -1;
     const bIsPinned = bPin !== -1;
 
-    if (aIsPinned && bIsPinned) return aPin - bPin; // Both pinned: by pin order
-    if (aIsPinned) return -1; // a pinned, b not
-    if (bIsPinned) return 1; // b pinned, a not
-    return a.localeCompare(b); // Neither pinned: alphabetical
+    if (aIsPinned && bIsPinned) return aPin - bPin;
+    if (aIsPinned) return -1;
+    if (bIsPinned) return 1;
+    return a.localeCompare(b);
   });
 
   return (
@@ -406,6 +741,13 @@ function Dashboard({ data, loading, error, isStale, departedTrains }) {
       ) : error && !data ? (
         <div className="dashboard-error">
           <span className="dashboard-error-icon">!</span>
+        </div>
+      ) : stations.length === 0 ? (
+        <div className="dashboard-empty">
+          <span className="empty-state-title">NO STATIONS</span>
+          <a href="#/search" className="empty-state-link">
+            SEARCH TO ADD
+          </a>
         </div>
       ) : (
         <>
@@ -427,7 +769,7 @@ function Dashboard({ data, loading, error, isStale, departedTrains }) {
               className={`dashboard-status-dot ${isStale ? "stale" : error ? "error" : "live"}`}
             />
             <a href="#/" className="dashboard-back-link">
-              ⋮
+              {"\u22EE"}
             </a>
           </div>
         </>
@@ -447,7 +789,6 @@ function DashboardStation({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
-  // Close menu when clicking outside
   useEffect(() => {
     if (!menuOpen) return;
     const handleClickOutside = (e) => {
@@ -462,15 +803,15 @@ function DashboardStation({
   return (
     <div className={`dashboard-station ${isPinned ? "pinned" : ""}`}>
       <div className="dashboard-station-name">
-        {isPinned && <span className="dashboard-pin-indicator">•</span>}
-        <span className="dashboard-station-icon">◼</span>
+        {isPinned && <span className="dashboard-pin-indicator">{"\u2022"}</span>}
+        <span className="dashboard-station-icon">{"\u25FC"}</span>
         {station.toUpperCase()}
         <div className="dashboard-station-menu-wrapper" ref={menuRef}>
           <button
             className="dashboard-station-menu-btn"
             onClick={() => setMenuOpen(!menuOpen)}
           >
-            ⋮
+            {"\u22EE"}
           </button>
           {menuOpen && (
             <div className="dashboard-station-menu">
@@ -489,10 +830,8 @@ function DashboardStation({
       </div>
       <div className="dashboard-rows">
         {rows.map((row, i) => {
-          // Check if there's a departed train for this line+direction
           const departedKey = `${station}-${row.line}-${row.directionCode}`;
           const departed = departedTrains[departedKey];
-          // Check if line changed from previous row
           const prevLine = i > 0 ? rows[i - 1].line : null;
           const isNewLine = prevLine && prevLine !== row.line;
           return (
@@ -520,7 +859,6 @@ function DashboardRow({
   departed,
   isNewLine,
 }) {
-  // If departed, show one fewer arrival to keep columns consistent
   const displayArrivals = departed
     ? arrivals.slice(0, 1)
     : arrivals.slice(0, 2);
@@ -536,7 +874,7 @@ function DashboardRow({
         className={`dashboard-time ${isArriving ? "arriving" : ""} ${arr.minutes <= 3 ? "soon" : ""} ${isArrivalStale ? "stale" : ""}`}
       >
         {arr.minutes}
-        {isArrivalStale && <span className="dashboard-stale-icon">⚠</span>}
+        {isArrivalStale && <span className="dashboard-stale-icon">{"\u26A0"}</span>}
       </span>
     );
   };
@@ -550,7 +888,7 @@ function DashboardRow({
           {direction.toUpperCase()}
         </span>
         {departed ? (
-          <span className="dashboard-time departed">«</span>
+          <span className="dashboard-time departed">{"\u00AB"}</span>
         ) : (
           renderTime(time1)
         )}
@@ -598,7 +936,7 @@ function LineCard({
       onDragEnd={onDragEnd}
     >
       <div className="line-header">
-        <div className="drag-handle">⋮⋮</div>
+        <div className="drag-handle">{"\u22EE\u22EE"}</div>
         <div className={`line-badge line-${line}`}>{line}</div>
         <h2 className="line-name">{line} TRAIN</h2>
         {badgeText && (
@@ -687,7 +1025,28 @@ function StationCard({
   onDragOver,
   onDrop,
   onDragEnd,
+  userStations,
+  onRemoveStation,
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  // Find the user station entry for this station name
+  const matchingUserStation = userStations?.find(
+    (s) => s.name === station || s.name.toUpperCase() === station.toUpperCase(),
+  );
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [menuOpen]);
+
   // Group by line first
   const byLine = arrivals.reduce((acc, arr) => {
     if (!acc[arr.line]) acc[arr.line] = [];
@@ -712,10 +1071,33 @@ function StationCard({
       onDragEnd={onDragEnd}
     >
       <div className="station-header">
-        <div className="drag-handle">⋮⋮</div>
+        <div className="drag-handle">{"\u22EE\u22EE"}</div>
         <h2 className="station-name">{station.toUpperCase()}</h2>
         {badgeText && (
           <span className={`status-badge ${statusClass}`}>{badgeText}</span>
+        )}
+        {matchingUserStation && (
+          <div className="station-menu-wrapper" ref={menuRef}>
+            <button
+              className="station-menu-btn"
+              onClick={() => setMenuOpen(!menuOpen)}
+            >
+              {"\u22EE"}
+            </button>
+            {menuOpen && (
+              <div className="station-menu">
+                <button
+                  className="station-menu-item remove"
+                  onClick={() => {
+                    onRemoveStation(matchingUserStation.stop_id);
+                    setMenuOpen(false);
+                  }}
+                >
+                  REMOVE
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -744,7 +1126,6 @@ function StationLineSection({
   stale,
   offline,
 }) {
-  // Group by direction
   const byDirection = arrivals.reduce((acc, arr) => {
     if (!acc[arr.direction]) {
       acc[arr.direction] = { arrivals: [], directionCode: arr.direction_code };
@@ -757,7 +1138,6 @@ function StationLineSection({
     (a.directionCode || "").localeCompare(b.directionCode || ""),
   );
 
-  // Find departed trains for this station and line
   const lineDeparted = Object.entries(departedTrains)
     .filter(([, dep]) => dep.station === station && dep.line === line)
     .reduce((acc, [, dep]) => {
@@ -799,13 +1179,11 @@ function DirectionRow({
   stale,
   offline,
 }) {
-  // Sort arrivals by minutes, then by line
   const sortedArrivals = [...arrivals].sort((a, b) => {
     if (a.minutes !== b.minutes) return a.minutes - b.minutes;
     return a.line.localeCompare(b.line);
   });
 
-  // Check for departed trains and get the line info
   let departedInfo = null;
   if (showLineBadge) {
     const departedKey = Object.keys(departed || {}).find((key) =>
@@ -818,7 +1196,6 @@ function DirectionRow({
     departedInfo = departed;
   }
 
-  // If showing DEP, show one fewer arrival to keep count consistent
   const displayArrivals = departedInfo
     ? sortedArrivals.slice(0, Math.max(0, sortedArrivals.length - 1))
     : sortedArrivals;
@@ -826,7 +1203,7 @@ function DirectionRow({
   return (
     <div className="direction-row">
       <div className="direction-label">
-        <span className="direction-arrow">→</span>
+        <span className="direction-arrow">{"\u2192"}</span>
         <span className="direction-name">{direction.toUpperCase()}</span>
         <span className="direction-tooltip">{direction.toUpperCase()}</span>
       </div>
@@ -890,7 +1267,7 @@ function ArrivalTime({
       {!isArriving && <span className="arrival-unit">MIN</span>}
       {isStale && (
         <span className={`arrival-indicator ${statusClass}`}>
-          {offline ? "!" : "⚠"}
+          {offline ? "!" : "\u26A0"}
         </span>
       )}
     </div>

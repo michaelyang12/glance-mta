@@ -1,0 +1,34 @@
+services:
+  backend:
+    build:
+      context: ./feed
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    networks:
+      - internal
+
+  frontend:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    environment:
+      - TAILSCALE_AUTHKEY=${TAILSCALE_AUTHKEY}
+      - TAILSCALE_HOSTNAME=glance-mta
+    volumes:
+      - tailscale-state:/tailscale
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - internal
+
+volumes:
+  tailscale-state:
+
+networks:
+  internal:

@@ -4,18 +4,64 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
+	"feed/internal/feeds"
 	"feed/internal/stations"
 )
 
-func NewServer(port int, hub *SSEHub, db *stations.StationDB) *http.Server {
+type ArrivalsResponse struct {
+	Arrivals []feeds.Arrival `json:"arrivals"`
+	Stale    bool            `json:"stale"`
+}
+
+func NewServer(port int, hub *SSEHub, db *stations.StationDB, cache *feeds.ArrivalCache) *http.Server {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/stream", hub.HandleStream)
 
+	mux.HandleFunc("/arrivals", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		stopsParam := r.URL.Query().Get("stops")
+		var arrivals []feeds.Arrival
+
+		if stopsParam != "" {
+			stopIDs := make(map[string]bool)
+			for _, s := range strings.Split(stopsParam, ",") {
+				s = strings.TrimSpace(s)
+				if s != "" {
+					stopIDs[s] = true
+				}
+			}
+			arrivals = cache.GetForStops(stopIDs)
+		} else {
+			arrivals = cache.GetAll()
+		}
+
+		if arrivals == nil {
+			arrivals = []feeds.Arrival{}
+		}
+
+		json.NewEncoder(w).Encode(ArrivalsResponse{
+			Arrivals: arrivals,
+			Stale:    cache.IsStale(),
+		})
+	})
+
 	mux.HandleFunc("/stations", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(db.GetAllStations())
+	})
+
+	mux.HandleFunc("/stations/search", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
+		if q == "" {
+			json.NewEncoder(w).Encode([]stations.StationInfo{})
+			return
+		}
+		json.NewEncoder(w).Encode(db.Search(q))
 	})
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

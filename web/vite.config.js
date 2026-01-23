@@ -7,6 +7,8 @@ export default defineConfig({
     port: 3000,
     proxy: {
       "/arrivals": "http://localhost:8080",
+      "/stations": "http://localhost:8080",
+      "/stream": "http://localhost:8080",
       "/health": "http://localhost:8080",
     },
   },
