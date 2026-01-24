@@ -5,20 +5,22 @@
 }
 
 :root {
-  /* Teenage Engineering palette */
-  --te-black: #0a0a0a;
-  --te-dark: #141414;
-  --te-gray: #1a1a1a;
-  --te-border: #2a2a2a;
-  --te-text: #e5e5e5;
-  --te-text-dim: #666666;
-  --te-orange: #ff6b00;
-  --te-orange-dim: #cc5500;
-  --te-green: #00ff88;
-  --te-red: #ff3b3b;
+  /* MTA-inspired palette */
+  --te-black: #0a0a0e;
+  --te-dark: #141418;
+  --te-gray: #1a1a20;
+  --te-border: #2a2a35;
+  --te-text: #f0f0f0;
+  --te-text-dim: #7a7a8a;
+  --te-orange: #fccc0a;
+  --te-orange-dim: #d4aa00;
+  --te-blue: #0039a6;
+  --te-blue-bright: #1a6fff;
+  --te-green: #00b35a;
+  --te-red: #ee352e;
 
   /* Typography */
-  --font-mono: 'JetBrains Mono', 'Space Mono', monospace;
+  --font-primary: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 
   /* Spacing */
   --grid: 8px;
@@ -30,30 +32,11 @@ html, body, #root {
 }
 
 body {
-  font-family: var(--font-mono);
+  font-family: var(--font-primary);
   background: var(--te-black);
   color: var(--te-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-/* Scanline effect overlay */
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.1) 2px,
-    rgba(0, 0, 0, 0.1) 4px
-  );
-  pointer-events: none;
-  z-index: 1000;
 }
 
 /* Custom scrollbar */
@@ -71,11 +54,11 @@ body::before {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--te-orange);
+  background: var(--te-blue-bright);
 }
 
 /* Selection */
 ::selection {
-  background: var(--te-orange);
-  color: var(--te-black);
+  background: var(--te-blue-bright);
+  color: white;
 }
