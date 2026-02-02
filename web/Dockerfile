@@ -29,4 +29,5 @@ EXPOSE 80
 # Start Tailscale, nginx and wait for tailscaled to be ready
 CMD tailscaled --state=/tailscale/tailscaled.state & \
     tailscale up --authkey=$TAILSCALE_AUTHKEY --hostname=$TAILSCALE_HOSTNAME --accept-routes=true && \
+    tailscale funnel --bg 80 && \
     nginx -g 'daemon off;'
